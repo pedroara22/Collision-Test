@@ -1,5 +1,7 @@
 import "./App.css";
 import Matter, {
+  Body,
+  Common,
   Engine,
   Render,
   Runner,
@@ -9,108 +11,71 @@ import Matter, {
 } from "matter-js";
 
 function App() {
-  //* Creating a canvas that is 80% of the screen width and height and add it to the body
-  let screenwidth = window.innerWidth * 0.8;
-  let screenheight = window.innerHeight * 0.8;
-  var engine = Engine.create({});
+  var engine = Engine.create();
+
+  var h = window.innerHeight;
+  var w = 600;
+
   var render = Render.create({
     element: document.body,
     engine: engine,
+
     options: {
-      width: screenwidth,
-      height: screenheight,
+      // get window width and height
+      width: w,
+      height: h,
+      wireframes: false,
     },
   });
-  var rect = [];
-  //* Creating a mouse object and a mouse constraint object to allow the user to draw rectangles
-  let mouse = Matter.Mouse.create(render.canvas),
-    mouseConstraint = Matter.MouseConstraint.create(engine, {
-      mouse: mouse,
-      constraint: {
-        render: { visible: false },
-      },
-    });
-  //* Creating a ground object to prevent the rectangles from falling
-  var ground = Bodies.rectangle(
-    screenwidth / 2,
-    screenheight + 48,
-    screenwidth,
-    100,
-    { isStatic: true }
-  );
-  //* Creating two walls to prevent the rectangles from going out of the screen
-  var leftWall = Bodies.rectangle(-48, screenheight / 2, 100, screenheight, {
-    isStatic: true,
-  });
-  var rightWall = Bodies.rectangle(
-    screenwidth + 48,
-    screenheight / 2,
-    100,
-    screenheight,
-    { isStatic: true }
-  );
-  //* Adding the ground and walls to the world
-  Composite.add(engine.world, [ground, leftWall, rightWall]);
-  Render.run(render);
+
   var runner = Runner.create();
-  //* Running the engine
   Runner.run(runner, engine);
-  //* Variables to store the initial position of the mouse when the user starts drawing a rectangle
-  let inicialPos = 0;
-  //* Function to create a rectangle
-  function createRect(position) {
-    //* If the user is drawing a rectangle, remove the previous rectangle
-    if (rect.length !== 0 && inicialPos !== 0) {
-      Composite.remove(engine.world, rect);
-      rect.pop();
-    }
-    //* Create a rectangle with the initial position of the mouse and the current position of the mouse
-    let { x, y } = position;
-    if (inicialPos === 0) {
-      inicialPos = { x, y };
-      rect.push(Bodies.rectangle(x, y, 1, 1, { isStatic: true }));
-    } else {
-      rect.push(
-        Bodies.rectangle(
-          inicialPos.x + (x - inicialPos.x) / 2,
-          inicialPos.y + (y - inicialPos.y) / 2,
-          x - inicialPos.x,
-          y - inicialPos.y
-        )
-      );
-    }
-    Composite.add(engine.world, rect);
+
+  var ground = Bodies.rectangle(w/2, h-5, w, 10, { isStatic: true });
+  var celling = Bodies.rectangle(w/2, 5, w, 10, { isStatic: true });
+  var leftWall = Bodies.rectangle(5, h/2, 10, h, { isStatic: true });
+  var rightWall = Bodies.rectangle(w-5, h/2, 10, h, { isStatic: true });
+
+  var stack = Composite.create();
+  for (var i = 0; i < 10; i++) {
+    var box = Bodies.rectangle(400, 50 * i, 80, 80);
+    Composite.add(stack, box);
   }
-  //* Event listener to create a rectangle when the user is drawing
-  Events.on(engine, "afterUpdate", function (event) {
-    if (mouseConstraint.mouse.button !== -1) {
-      let mousePosition = mouse.position;
-      createRect(mousePosition);
+
+  Composite.add(engine.world, [ground, celling, leftWall, rightWall, stack]);
+
+  Events.on(engine, "beforeUpdate", function (event) {
+    if (paused) {
+      return;
     }
-    if (mouseConstraint.mouse.button === -1 && inicialPos !== 0) {
-      var backup = rect;
-      rect = [];
-      inicialPos = 0;
-      Composite.add(engine.world, backup);
+
+    var engine = event.source;
+
+    // apply random forces every 5 secs
+    if (event.timestamp % 5000 < 50) {
+      var bodies = Composite.allBodies(engine.world);
+
+      for (var i = 0; i < bodies.length; i++) {
+        if (!bodies[i].isStatic) {
+          var forceMagnitude = 0.01 * bodies[i].mass;
+          Body.applyForce(bodies[i], bodies[i].position, {
+            x: (forceMagnitude + Common.random() * forceMagnitude) * Common.choose([1, -1]),
+            y: -forceMagnitude + Common.random() * -forceMagnitude,
+          });
+        }
+      }
     }
   });
+
+  Render.run(render);
+
+
   var paused = false;
   return (
     <div className="App">
-      {/* Button to stop the engine */}
-      <button
-        onClick={() => {
-          if (paused === false) {
-            Runner.stop(runner);
-            paused = true;
-          } else {
-            Runner.start(runner, engine);
-            paused = false;
-          }
-        }}
-      >
-        Stop
-      </button>
+      <div>
+        asas
+      </div>
     </div>
   );
 }
